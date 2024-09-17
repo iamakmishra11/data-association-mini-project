@@ -8,11 +8,22 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const path = require("path");
 const upload = require("./config/multerconfig");
-
+const mongoose = require('mongoose');
+require('dotenv').config(); // Load environment variables from .env file
 
 // Connect to MongoDB
-const connectToMongoDB = require("./models/user"); // Adjust the path as needed
-const post = require("./models/post");
+const connectToMongoDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log('Connected to MongoDB');
+  } catch (error) {
+    console.error('Error connecting to MongoDB:', error.message);
+  }
+};
+
 connectToMongoDB();
 
 // Set up view engine (EJS)
@@ -21,7 +32,7 @@ app.set("view engine", "ejs");
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname,"public")));
+app.use(express.static(path.join(__dirname, "public")));
 app.use(cookieParser());
 
 // Routes
@@ -33,14 +44,19 @@ app.get("/profile/uploads", (req, res) => {
   res.render("profileupload"); // Assuming you have an "index.ejs" file
 });
 
-app.post("/upload", isLoggedIn , upload.single("image") , async(req, res) => {
-  let user = await  userModel.findOne({email: req.user.email}) // Assuming you have an "index.ejs" file
-  user.profilepic = req.file.filename;
-  await user.save();
-  res.redirect("/profile");
+app.post("/upload", isLoggedIn, upload.single("image"), async (req, res) => {
+  try {
+    let user = await userModel.findOne({ email: req.user.email });
+    user.profilepic = req.file.filename;
+    await user.save();
+    res.redirect("/profile");
+  } catch (error) {
+    console.error("Error uploading image:", error.message);
+    res.status(500).send("Internal server error");
+  }
 });
 
-//Login Route
+// Login Route
 app.get("/login", (req, res) => {
   res.render("login"); // Assuming you have an "login.ejs" file
 });
@@ -68,42 +84,58 @@ app.post("/post", isLoggedIn, async (req, res) => {
   }
 });
 
-app.get("/profile", isLoggedIn, async(req, res) => {
-  let user = await userModel.findOne({ email: req.user.email }).populate('posts');
-  res.render("profile", {user}); //
-});
-
-//for managing the like and unlike buttons
-app.get("/like/:id", isLoggedIn, async(req, res) => {
-  let post = await postModel.findOne({ _id : req.params.id }).populate('user');
-
-  if (post.likes.indexOf(req.user.userid) === -1){
-    post.likes.push(req.user.userid);
+app.get("/profile", isLoggedIn, async (req, res) => {
+  try {
+    let user = await userModel.findOne({ email: req.user.email }).populate('posts');
+    res.render("profile", { user });
+  } catch (error) {
+    console.error("Error fetching profile:", error.message);
+    res.status(500).send("Internal server error");
   }
-  else{
-    post.likes.splice(post.likes.indexOf(req.user.userid), 1);
+});
+
+// For managing the like and unlike buttons
+app.get("/like/:id", isLoggedIn, async (req, res) => {
+  try {
+    let post = await postModel.findOne({ _id: req.params.id }).populate('user');
+
+    if (post.likes.indexOf(req.user.userid) === -1) {
+      post.likes.push(req.user.userid);
+    } else {
+      post.likes.splice(post.likes.indexOf(req.user.userid), 1);
+    }
+
+    await post.save();
+    res.redirect("/profile");
+  } catch (error) {
+    console.error("Error liking post:", error.message);
+    res.status(500).send("Internal server error");
   }
-
-  await post.save();
-  res.redirect("/profile"); //
 });
 
-
-//for managing the edit button click
-app.get("/edit/:id", isLoggedIn, async(req, res) => {
-  let post = await postModel.findOne({ _id : req.params.id }).populate('user');
-
-  res.render("edit", {post})
+// For managing the edit button click
+app.get("/edit/:id", isLoggedIn, async (req, res) => {
+  try {
+    let post = await postModel.findOne({ _id: req.params.id }).populate('user');
+    res.render("edit", { post });
+  } catch (error) {
+    console.error("Error fetching post for edit:", error.message);
+    res.status(500).send("Internal server error");
+  }
 });
 
-//update your post
-app.post("/update/:id", isLoggedIn, async(req, res) => {
-  let post = await postModel.findOneAndUpdate({ _id : req.params.id }, {content: req.body.content})
-  res.redirect("/profile");
+// Update your post
+app.post("/update/:id", isLoggedIn, async (req, res) => {
+  try {
+    let post = await postModel.findOneAndUpdate({ _id: req.params.id }, { content: req.body.content });
+    res.redirect("/profile");
+  } catch (error) {
+    console.error("Error updating post:", error.message);
+    res.status(500).send("Internal server error");
+  }
 });
 
-
-//Register Route
+// Register Route
 app.post("/register", async (req, res) => {
   const { email, password, username, name, age } = req.body;
 
@@ -150,7 +182,7 @@ app.post("/login", async (req, res) => {
       } else res.redirect("/login");
     });
   } catch (error) {
-    console.error(" We have an Error during Login:", error.message);
+    console.error("We have an Error during Login:", error.message);
     res.status(500).send("Internal server error");
   }
 });
@@ -178,7 +210,6 @@ function isLoggedIn(req, res, next) {
     res.status(401).send("Unauthorized"); // You can customize the error response
   }
 }
-
 
 // Start the server
 const PORT = process.env.PORT || 3011;
