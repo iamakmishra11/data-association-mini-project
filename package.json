@@ -3,7 +3,11 @@
   "version": "1.0.0",
   "main": "app.js",
   "scripts": {
+    "postinstall": "npm rebuild bcrypt",
     "start": "node app.js"
+  },
+  "engines": {
+    "node": "20.15.1"
   },
   "keywords": [],
   "author": "",
