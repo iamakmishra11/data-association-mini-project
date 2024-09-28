@@ -5,7 +5,7 @@
   "scripts": {
     "postinstall": "npm rebuild bcrypt",
     "start": "node app.js",
-    "build": "echo 'Building project...' && cp -r src/* dist/"
+    
   },
   "engines": {
     "node": "20.15.1"
