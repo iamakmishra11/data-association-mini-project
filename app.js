@@ -142,8 +142,8 @@ app.post("/register", async (req, res) => {
       return res.status(400).send({ error: "Email already exists" });
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const hash = await bcrypt.hash(password, salt);
+    
+    const hash = await bcrypt.hash(password, 10);
 
     user = await userModel.create({
       username,
