@@ -153,9 +153,8 @@ app.post("/register", async (req, res) => {
       password: hash,
     });
 
-    const token = jwt.sign({ email: email, userid: user._id }, "aalu");
-    res.cookie("token", token);
-    res.send("Registered successfully");
+    // Redirect to login page after successful registration
+    res.redirect("/login");
   } catch (error) {
     console.error("Error during registration:", error.message);
     res.status(500).send("Internal server error");
